@@ -11,10 +11,10 @@ import time
 from lxml import html as lxml_html
 
 from email_parser import parse
-from config import pass_through_mailboxes, pass_through_target, action_mailboxes
+from config import pass_through_mailboxes, pass_through_target, action_mailboxes, smtp_server_debug
 import responders
 
-valid_email_pattern = re.compile("^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$")
+valid_email_pattern = re.compile("^[\w-]+(\.?\+?[\w-]+)*@([\w-]+\.?)*$")
 
 def valid_email_address (email_address):
     """Confirm that the email address provided is of a valid format"""
@@ -89,7 +89,7 @@ def process_email (email_data):
         if inbox in pass_through_mailboxes:
             # treat this email as a regular incoming message and pass it along to the intended inbox
             responders.pass_through(eml, email_data['sender'], pass_through_target, subject, body_text, body_html)
-        
+
         elif inbox in action_mailboxes.keys():
             # this email represents a command that requires a specific threaded class instantiated and invoked
             # use the string representation of the class name -- defined by action_mailboxes[inbox] in config.py -- to call it
@@ -99,3 +99,12 @@ def process_email (email_data):
                 obj.start() # kick off the request processor as a child thread so that the smtp server can close the connection immediately
             except AttributeError, e:
                 print 'Exception:', time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()), e
+        else:
+            if smtp_server_debug:
+                print 'Debug:', time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()), "Processing other"
+                print 'Debug:', time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()), "  From:", email_data['sender']
+                print 'Debug:', time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()), "  To:", email_data['recipients']
+                print 'Debug:', time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()), "  Subject:", subject.strip()
+                print 'Debug:', time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()), "  Body Text:", body_text.strip()
+                print 'Debug:', time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()), "  Body HTML:", body_html.strip()
+

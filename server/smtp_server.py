@@ -77,6 +77,7 @@ def as_timed_client (cargo, fn):
 def greeting (cargo):
     stream = cargo[0]
     ip = stream.client_address[0]
+
     if not valid_ip_address(ip):
         with_stream_write (stream, bad_request+cr_lf)
         return ('done', cargo)
@@ -166,14 +167,15 @@ def rcpt (cargo):
             break
 
     # get the list of email addresses specified in the 'RCPT TO:' portion of the message
-    server_recipients = filter(lambda x: x.split('@')[1].lower() == recipient_domain, recipients)
+    #server_recipients = filter(lambda x: x.split('@')[1].lower() == recipient_domain, recipients)
     # find the inbox @smtp_server_domain which is valid (i.e., we have an action function or pass-through specified)
-    inbox = domain_recipients_valid(map(lambda x: x.split('@')[0].lower(), server_recipients))
+    #inbox = domain_recipients_valid(map(lambda x: x.split('@')[0].lower(), server_recipients))
+    inbox = map(lambda x: x.split('@')[0].lower(), recipients)
     if inbox is None:
         block_ip_address(email_data['ip'])
         client_error = True
 
-    if client_error or len(server_recipients) == 0:
+    if client_error: # or len(server_recipients) == 0:
         # this email was not sent to an inbox that we can respond to
         # so stop the client with a bad request reply and close the connection 
         with_stream_write (stream, bad_request+cr_lf)
@@ -226,7 +228,7 @@ def data (cargo):
 
 def process (cargo):
     # if the state machine has gotten this far, the email is valid, so pass it to the processor
-    process_email(cargo[1]) 
+    process_email(cargo[1])
     return ('done', cargo)
 
 
@@ -254,7 +256,7 @@ class SMTPRequestHandler (SocketServer.StreamRequestHandler):
                 exception_data['data'] = m.current_cargo[1]
             e.args = (exception_data,)
             raise
-        
+
 def start():
     try:
         tcpserver = SocketServer.ThreadingTCPServer((smtp_server_domain, smtp_server_port), SMTPRequestHandler)
