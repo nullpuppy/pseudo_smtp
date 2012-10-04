@@ -11,16 +11,12 @@ import time
 from lxml import html as lxml_html
 
 from email_parser import parse
-from config import pass_through_mailboxes, pass_through_target, action_mailboxes, log_level, log_format, log_datefmt
+from config import pass_through_mailboxes, pass_through_target, action_mailboxes
 from models.mail import Mail, Sender, Recipient, Address
 from db_utils import session
 from sqlalchemy.exc import OperationalError
-import logging
+from log import log
 import responders
-
-logging.basicConfig(format=log_format,datefmt=log_datefmt)
-log = logging.getLogger(__name__)
-log.setLevel(log_level)
 
 valid_email_pattern = re.compile("^[\w-]+(\.?\+?[\w-]+)*@([\w-]+\.?)*$")
 
@@ -121,19 +117,19 @@ def process_email (email_data):
 
             try:
                 session.add(msg)
-                
+
                 result = session.query(Address).filter(Address.local==sender.local).filter(Address.domain==sender.domain)
                 if result.count() == 0:
                     session.add(sender)
                 else:
                     sender = result[0]
-                
+
                 for idx,r in enumerate(recipients):
                     if r.local == sender.local and r.domain == sender.domain:
                         next
 
                     result = session.query(Address).filter(Address.local==r.local).filter(Address.domain==r.domain)
-                    if result.count == 0:
+                    if result.count() == 0:
                         session.add(r)
                     else:
                         r = result[0]
@@ -142,6 +138,8 @@ def process_email (email_data):
                 if session.dirty or session.new:
                     session.commit()
             except OperationalError, e:
+                log.exception(e)
+            except Exception, e:
                 log.exception(e)
 
             try:

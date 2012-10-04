@@ -3,12 +3,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import OperationalError
 
 from models.mail import Base
-from config import database_url, log_level, log_format, log_datefmt
-import logging
-
-logging.basicConfig(format=log_format,datefmt=log_datefmt)
-log = logging.getLogger(__name__)
-log.setLevel(log_level)
+from config import database_url
+from log import log
 
 engine = create_engine(database_url)
 Session = sessionmaker(bind=engine)

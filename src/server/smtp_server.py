@@ -9,20 +9,16 @@ The custom smtp server: respond to all incoming email based on its inbox address
 import re
 import time
 import socket, SocketServer
-import logging
 from statemachine import StateMachine
 from anti_spam import valid_ip_address, valid_subject, block_ip_address
 
-from config import domain_logo, smtp_server_domain, smtp_server_port, log_level, log_format, log_datefmt
+from config import domain_logo, smtp_server_domain, smtp_server_port
+from log import log
 from utils.email_utils import valid_email_address, get_email_address, domain_recipients_valid, get_base_subject, process_email
 
 cr_lf = "\r\n"
 bad_request = '550 No such user'
 idle_threshold = 600.0 # client must complete the interaction within 10 min or be cut-off
-
-logging.basicConfig(format=log_format,datefmt=log_datefmt)
-log = logging.getLogger(__name__)
-log.setLevel(log_level)
 
 recipient_domain = domain_logo.lower() # used to check rcpt to values by domain
 

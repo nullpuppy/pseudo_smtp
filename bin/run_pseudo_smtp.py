@@ -11,13 +11,9 @@ for m in modules:
         sys.path.insert(0,path)
 
 import smtp_server
-from config import log_level, log_format, log_datefmt, smtp_server_domain, smtp_server_port 
-import logging
+from config import smtp_server_domain, smtp_server_port
+from log import log
 from db_utils import does_database_exist, verify_schema, create_database, initialize_database
-
-logging.basicConfig(format=log_format,datefmt=log_datefmt)
-log = logging.getLogger(__name__)
-log.setLevel(log_level)
 
 if __name__ == '__main__':
     if not does_database_exist():
