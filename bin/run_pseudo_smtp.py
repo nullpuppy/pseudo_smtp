@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from argparse import ArgumentParser
 import os
 import sys
 
@@ -12,10 +13,16 @@ for m in modules:
 
 import smtp_server
 from config import smtp_server_domain, smtp_server_port
-from log import log
+from log import log, set_foreground_logger
 from db_utils import does_database_exist, verify_schema, create_database, initialize_database
+import daemon
 
-if __name__ == '__main__':
+class PseudoSMTPDaemon(daemon.Daemon):
+    def run(self):
+        smtp_server.start()
+
+
+def _setup_db():
     if not does_database_exist():
         log.info("Database missing. Attempting to create")
         if create_database():
@@ -30,6 +37,30 @@ if __name__ == '__main__':
             if initialize_database():
                 log.info("Database successfully initialized")
 
-    log.info("Starting smtp listener on as " + smtp_server_domain + ":" + str(smtp_server_port)) 
-    smtp_server.start();
+
+
+if __name__ == '__main__':
+    parser = ArgumentParser()
+    parser.add_argument("-d", "--daemon", help="run as a daemon")
+    parser.add_argument("-a", "--address", default=smtp_server_domain, help="bind address")
+    parser.add_argument("-p", "--port", type=int, default=smtp_server_port, help="bind port")
+    args = parser.parse_args()
+
+    if not args.daemon:
+        set_foreground_logger()
+        _setup_db()
+        # not daemon, just run in foreground.
+        log.info("Starting smtp listener on as %s:%s", smtp_server_domain, str(smtp_server_port))
+        smtp_server.start()
+    else:
+        daemon = PseudoSMTPDaemon('/tmp/pseudo_smtp.pid')
+        if args.daemon == 'start':
+            _setup_db()
+            daemon.start()
+        elif args.daemon == 'stop':
+            daemon.stop()
+        elif args.daemon == 'restart':
+            daemon.restart()
+        elif args.daemon == 'status':
+            daemon.status()
 
