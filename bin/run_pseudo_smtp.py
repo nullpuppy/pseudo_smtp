@@ -4,9 +4,9 @@ import os
 import sys
 
 base = os.path.dirname(os.path.abspath(sys.argv[0]))
-modules = [ 'server', 'utils', 'agents', 'modules' ]
+modules = [ '', 'server', 'utils', 'agents', 'modules' ]
 for m in modules:
-    path = os.path.abspath(os.path.join(base, m))
+    path = os.path.abspath(os.path.join(base, '../src', m))
     if not path in sys.path:
         sys.path.insert(0,path)
 
