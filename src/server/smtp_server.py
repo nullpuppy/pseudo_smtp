@@ -9,15 +9,20 @@ The custom smtp server: respond to all incoming email based on its inbox address
 import re
 import time
 import socket, SocketServer
+import logging
 from statemachine import StateMachine
 from anti_spam import valid_ip_address, valid_subject, block_ip_address
 
-from config import domain_logo, smtp_server_domain, smtp_server_port, smtp_server_debug
+from config import domain_logo, smtp_server_domain, smtp_server_port, log_level, log_format, log_datefmt
 from utils.email_utils import valid_email_address, get_email_address, domain_recipients_valid, get_base_subject, process_email
 
 cr_lf = "\r\n"
 bad_request = '550 No such user'
 idle_threshold = 600.0 # client must complete the interaction within 10 min or be cut-off
+
+logging.basicConfig(format=log_format,datefmt=log_datefmt)
+log = logging.getLogger(__name__)
+log.setLevel(log_level)
 
 recipient_domain = domain_logo.lower() # used to check rcpt to values by domain
 
@@ -86,6 +91,7 @@ def greeting (cargo):
         email_data = cargo[1]
         email_data['ip'] = ip
         email_data['start'] = time.time()
+        log.info("Connection from %s opened", cargo[1]['ip'])
         return ('helo', (stream, email_data))
 
 helo_pattern = re.compile('^HELO', re.IGNORECASE)
@@ -96,8 +102,7 @@ def helo (cargo):
         stream = cargo[0]
         client_msg = with_stream_read (stream)
 
-        if smtp_server_debug:
-            print 'Debug:', cargo[1]['ip'], time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()), client_msg.rstrip('\r\n')
+        log.debug("%s /%s/", cargo[1]['ip'], client_msg.strip())
 
         if helo_pattern.search(client_msg) or ehlo_pattern.search(client_msg):
             with_stream_write (stream, '250 Hello'+cr_lf)
@@ -114,8 +119,7 @@ def mail (cargo):
         stream = cargo[0]
         client_msg = with_stream_read (stream)
 
-        if smtp_server_debug:
-            print 'Debug:', cargo[1]['ip'], time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()), client_msg.rstrip('\r\n')
+        log.debug("%s /%s/", cargo[1]['ip'], client_msg.strip())
 
         if mail_pattern.search(client_msg):
             sender = get_email_address(client_msg)
@@ -145,8 +149,7 @@ def rcpt (cargo):
     while 1:
         client_msg = with_stream_read (stream)
 
-        if smtp_server_debug:
-            print 'Debug:', cargo[1]['ip'], time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()), client_msg.rstrip('\r\n')
+        log.debug("%s /%s/", cargo[1]['ip'], client_msg.strip())
 
         if client_is_idle(email_data['start']):
             client_error = True
@@ -222,6 +225,7 @@ def data (cargo):
         with_stream_write (stream, bad_request+cr_lf)
         return ('done', cargo)
     else:
+        log.info("Connection with %s closed", cargo[1]['ip'])
         with_stream_write (stream, '250 Ok: queued'+cr_lf)
         email_data['contents'] = ''.join(contents)
         return ('process', (stream, email_data))

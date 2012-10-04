@@ -11,8 +11,16 @@ import time
 from lxml import html as lxml_html
 
 from email_parser import parse
-from config import pass_through_mailboxes, pass_through_target, action_mailboxes, smtp_server_debug
+from config import pass_through_mailboxes, pass_through_target, action_mailboxes, log_level, log_format, log_datefmt
+from models.mail import Mail, Sender, Recipient, Address
+from db_utils import session
+from sqlalchemy.exc import OperationalError
+import logging
 import responders
+
+logging.basicConfig(format=log_format,datefmt=log_datefmt)
+log = logging.getLogger(__name__)
+log.setLevel(log_level)
 
 valid_email_pattern = re.compile("^[\w-]+(\.?\+?[\w-]+)*@([\w-]+\.?)*$")
 
@@ -98,13 +106,51 @@ def process_email (email_data):
                 obj = response_class(eml, email_data['sender'], subject, body_text, body_html)
                 obj.start() # kick off the request processor as a child thread so that the smtp server can close the connection immediately
             except AttributeError, e:
-                print 'Exception:', time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()), e
+                log.exception(e)
         else:
-            if smtp_server_debug:
-                print 'Debug:', time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()), "Processing other"
-                print 'Debug:', time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()), "  From:", email_data['sender']
-                print 'Debug:', time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()), "  To:", email_data['recipients']
-                print 'Debug:', time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()), "  Subject:", subject.strip()
-                print 'Debug:', time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()), "  Body Text:", body_text.strip()
-                print 'Debug:', time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()), "  Body HTML:", body_html.strip()
+            body_text = unicode(body_text.strip()) if body_text else u""
+            body_html = unicode(body_html.strip()) if body_html else u""
+
+            msg = Mail(subject.strip(), body_text, body_html)
+            local, domain = email_data['sender'].split('@')
+            sender = Address(local, domain)
+            recipients = [ ]
+            for r in email_data['recipients']:
+                local, domain = r.split('@')
+                recipients.append(Address(local, domain))
+
+            try:
+                session.add(msg)
+                
+                result = session.query(Address).filter(Address.local==sender.local).filter(Address.domain==sender.domain)
+                if result.count() == 0:
+                    session.add(sender)
+                else:
+                    sender = result[0]
+                
+                for idx,r in enumerate(recipients):
+                    if r.local == sender.local and r.domain == sender.domain:
+                        next
+
+                    result = session.query(Address).filter(Address.local==r.local).filter(Address.domain==r.domain)
+                    if result.count == 0:
+                        session.add(r)
+                    else:
+                        r = result[0]
+                        recipients[idx] = result[0]
+
+                if session.dirty or session.new:
+                    session.commit()
+            except OperationalError, e:
+                log.exception(e)
+
+            try:
+                session.add(Sender(msg.id, sender.id))
+                for r in recipients:
+                    recip = Recipient(msg.id, r.id)
+                    session.add(recip)
+                if session.dirty or session.new:
+                    session.commit()
+            except OperationalError, e:
+                log.exception(e)
 
