@@ -12,7 +12,7 @@ from lxml import html as lxml_html
 
 from email_parser import parse
 from config import pass_through_mailboxes, pass_through_target, action_mailboxes
-from models.mail import Mail, Sender, Recipient, Address
+from models.mail import Message, Sender, Recipient, Address
 from db_utils import session
 from sqlalchemy.exc import OperationalError
 from log import log
@@ -107,7 +107,7 @@ def process_email (email_data):
             body_text = unicode(body_text.strip()) if body_text else u""
             body_html = unicode(body_html.strip()) if body_html else u""
 
-            msg = Mail(subject.strip(), body_text, body_html)
+            msg = Message(subject.strip(), body_text, body_html)
             local, domain = email_data['sender'].split('@')
             sender = Address(local, domain)
             recipients = [ ]

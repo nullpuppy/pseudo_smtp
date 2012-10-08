@@ -4,8 +4,8 @@ from datetime import datetime
 
 Base = declarative_base()
 
-class Mail(Base):
-    __tablename__ = u'mail'
+class Message(Base):
+    __tablename__ = u'message'
     __table_args__ = {'useexisting': True, 'mysql_engine': 'InnoDB'}
 
     id = Column(Integer, primary_key=True)
@@ -36,24 +36,24 @@ class Address(Base):
         self.domain = domain
 
 class Recipient(Base):
-    __tablename__ = u'mail_recipients'
+    __tablename__ = u'message_recipients'
     __table_args__ = {'useexisting': True, 'mysql_engine': 'InnoDB'}
 
     address_id = Column(Integer, ForeignKey('address.id'), primary_key=True)
-    mail_id = Column(Integer, ForeignKey('mail.id'), primary_key=True)
+    message_id = Column(Integer, ForeignKey('message.id'), primary_key=True)
 
-    def __init__(self, mail_id, address_id):
-        self.mail_id = mail_id
+    def __init__(self, message_id, address_id):
+        self.message_id = message_id
         self.address_id = address_id
 
 class Sender(Base):
-    __tablename__ = u'mail_sender'
+    __tablename__ = u'message_sender'
     __table_args__ = {'useexisting': True, 'mysql_engine': 'InnoDB'}
 
     address_id = Column(Integer, ForeignKey('address.id'))
-    mail_id = Column(Integer, primary_key=True)
+    message_id = Column(Integer, primary_key=True)
 
-    def __init__(self, mail_id, address_id):
-        self.mail_id = mail_id
+    def __init__(self, message_id, address_id):
+        self.message_id = message_id
         self.address_id = address_id
 
