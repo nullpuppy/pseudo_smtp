@@ -229,7 +229,7 @@ def data (cargo):
 def process (cargo):
     # if the state machine has gotten this far, the email is valid, so pass it to the processor
     process_email(cargo[1])
-    return ('done', cargo)
+    return ('mail', cargo)
 
 
 class SMTPRequestHandler (SocketServer.StreamRequestHandler):
