@@ -221,7 +221,7 @@ def data (cargo):
         with_stream_write (stream, bad_request+cr_lf)
         return ('done', cargo)
     else:
-        log.info("Connection with %s closed", cargo[1]['ip'])
+        log.info("Enqueued message from %s", cargo[1]['ip'])
         with_stream_write (stream, '250 Ok: queued'+cr_lf)
         email_data['contents'] = ''.join(contents)
         return ('process', (stream, email_data))
